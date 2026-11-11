@@ -19,7 +19,7 @@ pornhat_api = "pornhat_api.api:main"
 [tool.uv.build-backend]
 module-name = "pornhat_api"
 module-root = ""
-source-include = ["docs/**", "MANIFEST.in"]
+source-include = ["README.md", "LICENSE", "MANIFEST.in"]
 
 [dependency-groups]
 dev = ["pytest", "pytest-asyncio", "build", "ruff"]
@@ -31,3 +31,7 @@ markers = ["live: requires real public Pornhat requests"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
+
+[project.urls]
+Documentation = "https://docs.echteralsfake.me/pornhat"
+Repository = "https://github.com/EchterAlsFake/unofficial-api-for-pornhat"

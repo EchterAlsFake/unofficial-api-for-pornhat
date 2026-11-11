@@ -2,6 +2,7 @@
 <p align="center"><em>An asynchronous Python API wrapper and scraper for pornhat.com</em></p>
 
 <div align="center">
+    <a href="https://pepy.tech/project/pornhat_api"><img src="https://static.pepy.tech/badge/pornhat_api" alt="Downloads"></a> +
     <a href="https://pepy.tech/project/unofficial-api-for-pornhat"><img src="https://static.pepy.tech/badge/unofficial-api-for-pornhat" alt="Downloads"></a>
     <a href="https://github.com/EchterAlsFake/unofficial-api-for-pornhat/workflows/"><img src="https://github.com/EchterAlsFake/unofficial-api-for-pornhat/workflows/CodeQL/badge.svg" alt="CodeQL Analysis"/></a>
     <a href="https://echteralsfake.me/ci/unofficial-api-for-pornhat/badge.svg"><img src="https://echteralsfake.me/ci/unofficial-api-for-pornhat/badge.svg" alt="Sync API Tests"/></a>
@@ -21,16 +22,20 @@
 
 | Category | Details |
 |---|---|
-| **Video Fetching** | Fetch video objects with title, description, views, publish date, duration, channel, models, tags, thumbnails, and player sources |
+| **Video Fetching** | Fetch video objects with full metadata (title, description, views, publish date, ratings, author, and associated models) |
 | **Video Downloading** | HLS-based downloading with configurable quality (`best`, `half`, `worst`, or specific resolutions) |
-| **Channel & Model Profiles** | Fetch `Channel` and `Model` profiles and iterate through their complete video listings |
-| **Category & Paysite Fetching** | Browse tags through `Category` objects and paysite/brand collections through `Site` objects |
-| **Video Search** | Search videos, browse new/popular/trending videos, and sort model/channel directories |
-| **Lazy Source Loading** | Select HTML metadata or deferred media resolution using `load_html`, `load_media`, `load_sources`, and `load_fields` |
+| **Channel & Pornstar Profiles** | Fetch channel/pornstar/model profiles, retrieve videos, and extract worked-with-models metadata |
+| **Playlist Fetching** | Fetch and iterate through playlists page-by-page with concurrency control |
+| **Video Search** | Search videos with advanced filters for sorting, upload date, duration, and quality |
+| **Account Support** | Connect user account via login cookies to retrieve personalized watch later, favorites, and recommended videos |
 | **Async-First** | Fully asynchronous (`async` / `await`) built on top of `asyncio` |
 | **Built-in Caching** | Automatic response caching with configurable limits to reduce redundant network requests |
 | **CLI Support** | Command-line interface for quick downloads — run `pornhat_api -h` for options |
 | **Type Safety** | Comprehensive type hinting and `dataclass`-based models throughout |
+
+`Video.author_name` provides the uploader display name directly from the video
+page, without fetching the uploader's channel or video statistics. Use
+`await video.get_author` when you need the actual profile object.
 
 #### Networking Features
 
@@ -38,7 +43,7 @@ The networking layer is provided by the [`eaf_base_api`](https://github.com/Echt
 
 | Feature | Description |
 |---|---|
-| **HTTP/1.1, HTTP/2, HTTP/3** | Configurable HTTP version (`v1`, `v2`, `v3` — defaults to HTTP/2) |
+| **HTTP/1.1, HTTP/2, HTTP/3** | Configurable HTTP version (`v1`, `v2`, `v3` — defaults to HTTP/3) |
 | **Browser Impersonation** | Built-in browser fingerprint impersonation via `curl_cffi` (defaults to Chrome) |
 | **Custom JA3 Fingerprint** | Override the TLS fingerprint with a custom JA3 string for advanced use cases |
 | **Proxy Support** | All proxy types supported (HTTP, HTTPS, SOCKS4, SOCKS5) |
@@ -54,14 +59,14 @@ The networking layer is provided by the [`eaf_base_api`](https://github.com/Echt
 # Supported Platforms
 This API has been tested and confirmed working on:
 
-- Linux (x86_64), Python 3.15, with FFmpeg/ffprobe
-
-Python 3.12 or newer is required. Other platforms have not been verified.
+- Windows 11 (x64) 
+- macOS Sequoia (x86_64)
+- Linux (Arch) (x86_64)
+- Android 16 (aarch64)
 
 ---
 
 # Installation
-
 
 ```bash
 pip install unofficial-api-for-pornhat
@@ -82,18 +87,17 @@ from pornhat_api import Client, DownloadConfigHLS
 
 async def main():
     # Initialize a Client object
-    async with Client() as client:
-        # Fetch a video
-        video_object = await client.get_video(
-            "https://www.pornhat.com/video/armani-black-wants-her-husband-s-friend-deep-inside/"
-        )
+    client = Client()
+    
+    # Fetch a video
+    video_object = await client.get_video("<insert_url_here>")
+    
+    # Information from Video objects
+    print(video_object.title)
 
-        # Information from Video objects
-        print(video_object.title)
-
-        # Download the video
-        config = DownloadConfigHLS(quality="best", path="./", remux=True)
-        await video_object.download(config)
+    # Download the video
+    config = DownloadConfigHLS(quality="best", path="./") # More options in the documentation
+    await video_object.download(config)
 
 if __name__ == "__main__":
     asyncio.run(main())
