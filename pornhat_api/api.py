@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from base_api import paginated_stream, PageInfo, validate_pagination
+from base_api.modules.pagination import linked_page, http_status_is
+
 import argparse
 import asyncio
 import json
@@ -45,35 +48,24 @@ def _iterator_config() -> IteratorConfig:
 
 
 def _listing(core, url, constructor, extractor, *, pages, start_page, iterator_config):
-    if (
-        not isinstance(start_page, int)
-        or isinstance(start_page, bool)
-        or start_page < 1
-        or (
-            pages != "all"
-            and (not isinstance(pages, int) or isinstance(pages, bool) or pages < 1)
-        )
-    ):
-        raise ValueError(
-            "pages must be a positive integer or 'all'; start_page must be positive"
-        )
-    config = iterator_config if iterator_config is not None else _iterator_config()
+    page_url = lambda page: c.page_url(url, page)
 
-    async def generate():
-        # Clamp ranges to the real last page; beyond-last URLs otherwise return 404.
-        content = await get_html_content(core, url)
-        last = c.page_count(c.checked_parser(content, url))
-        end = last if pages == "all" else min(last, start_page + pages - 1)
-        urls = [c.page_url(url, n) for n in range(start_page, end + 1)]
-        async with Helper(core=core, constructor=constructor).iterator(
-            target_page_urls=urls,
-            item_extractor=extractor,
-            iterator_config=config,
-        ) as stream:
-            async for result in stream:
-                yield result
+    def info(content, page, rows):
+        c.checked_parser(content, url)
+        return linked_page(content, page, rows, page_url=page_url)
 
-    return ScrapeStream(generate())
+    return paginated_stream(
+        core=core,
+        constructor=constructor,
+        page_url=page_url,
+        item_extractor=extractor,
+        page_info=info,
+        pages=pages,
+        start_page=start_page,
+        iterator_config=iterator_config or _iterator_config(),
+        verify_first=True,
+        terminal_error=lambda error, page: page > 1 and http_status_is(error, 404),
+    )
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -342,6 +334,7 @@ class Collection(BaseMedia):
         start_page: int = 1,
         iterator_config: IteratorConfig | None = None,
     ) -> ScrapeStream[Video]:
+        validate_pagination(pages, start_page)
         return _listing(
             self.core,
             self.url,
@@ -431,6 +424,7 @@ class Client:
         start_page: int = 1,
         iterator_config: IteratorConfig | None = None,
     ) -> ScrapeStream[Video]:
+        validate_pagination(pages, start_page)
         if not query.strip():
             raise ValueError("Search query cannot be empty")
         url = f"{self.base_url}/search/{quote(re.sub(r'\s', '-', query.strip()), safe='')}/"
@@ -452,6 +446,7 @@ class Client:
         start_page: int = 1,
         iterator_config: IteratorConfig | None = None,
     ) -> ScrapeStream[Video]:
+        validate_pagination(pages, start_page)
         value = Sort(sort).value
         url = f"{self.base_url}/{value}/" if value else f"{self.base_url}/"
         return _listing(
@@ -465,6 +460,7 @@ class Client:
         )
 
     def _profiles(self, kind, *, sort, letter, pages, start_page, iterator_config):
+        validate_pagination(pages, start_page)
         sort = ProfileSort(sort)
         route = "models" if kind is Model else "channels"
         url = f"{self.base_url}/{route}/"
@@ -500,6 +496,7 @@ class Client:
         start_page: int = 1,
         iterator_config: IteratorConfig | None = None,
     ) -> ScrapeStream[Model]:
+        validate_pagination(pages, start_page)
         return self._profiles(
             Model,
             sort=sort,
@@ -518,6 +515,7 @@ class Client:
         start_page: int = 1,
         iterator_config: IteratorConfig | None = None,
     ) -> ScrapeStream[Channel]:
+        validate_pagination(pages, start_page)
         return self._profiles(
             Channel,
             sort=sort,
